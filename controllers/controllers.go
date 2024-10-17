@@ -115,6 +115,8 @@ func AllRoutes(c *gin.Context) {
 	})
 }
 
+// currently not being used as a route handler because of a wild card conflict that I have yet to resolve
+// I would like to get it to work so I am not deleting it yet.
 /* func RouteByID(c *gin.Context) {
 	//get id from URL
 	ID := c.Param("ID")
@@ -128,16 +130,22 @@ func AllRoutes(c *gin.Context) {
 	})
 } */
 
-func GetRouteName(c *gin.Context) {
+func GetRouteByName(c *gin.Context) {
+	// Gets the name of the route from the URL wildcard
 	routeName := c.Param("Name")
 
+	// defines the payload to be passed based on the name of the route
 	var route models.Route
 	if err := initializers.DB.Where("route_name = ?", routeName).First(&route).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
 		return
 	}
-
-	c.JSON(http.StatusOK, route)
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"title":     "Page Loaded correctly",
+		"routeName": route.RouteName,
+		"driver":    route.Driver,
+		"comments":  route.Comments,
+	})
 }
 
 func RouteUpdate(c *gin.Context) {
@@ -177,6 +185,9 @@ func RouteDelete(c *gin.Context) {
 
 func Status(c *gin.Context) {
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"title": "Page Loaded correctly",
+		"title":     "Page Loaded correctly",
+		"routeName": "Route Name",
+		"driver":    "Test Data",
+		"comments":  "Good",
 	})
 }

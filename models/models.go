@@ -17,7 +17,7 @@ type Driver struct {
 	gorm.Model
 	Name string `json:"name"`
 }
- type DBpattern struct {
+ type DBSchema struct {
 	routes []Route
 	driver []Driver
  }

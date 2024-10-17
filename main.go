@@ -21,9 +21,13 @@ func main() {
 	r.GET("/routes", controllers.AllRoutes)
 	r.PUT("/routes/:ID", controllers.RouteUpdate)
 	r.DELETE("/routes/:ID", controllers.RouteDelete)
-	r.GET("/routes/:Name", controllers.GetRouteName)
-	// r.GET("/routes/:ID", controllers.RouteByID)
+	r.GET("/routes/:Name", controllers.GetRouteByName)
 
+	// Commented out becuase it conflicts with the wildcard for "/routes/:Name"
+	// Later I would like to make it so that we could search the DB for something other than just the name
+	// but that hasnt happened yet.
+	//
+	// r.GET("/routes/:ID", controllers.RouteByID)
 
 	r.Run() // listen and server on 0.0.0.0:3000 this is based on the Enviroment variable
 }
