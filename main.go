@@ -16,6 +16,8 @@ func main() {
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 
+	r.Static("/static", "./resources")
+
 	r.GET("/", controllers.Status)
 	r.POST("/routes", controllers.AddRoute)
 	r.GET("/routes", controllers.AllRoutes)
