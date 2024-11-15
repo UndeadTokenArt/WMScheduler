@@ -191,3 +191,15 @@ func Status(c *gin.Context) {
 		"comments":  "Good",
 	})
 }
+
+func CanvasTest(c *gin.Context) {
+	c.HTML(http.StatusOK, "canvas.tmpl", gin.H{})
+}
+
+// this should serve files into the header of routetools.tmpl
+func MapTest(c *gin.Context) {
+	c.HTML(http.StatusOK, "routetools.tmpl", gin.H{
+		"header": "leaflet.css",
+		"body":   "map.tmpl",
+	})
+}

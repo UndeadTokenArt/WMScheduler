@@ -4,112 +4,74 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .routeName }} Details</title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-  <style>
-    .container-fluid {
-      padding-right: 0;
-      padding-left: 0;
-    }
-
-    .row.content {
-      height: auto;
-    }
-
-    .sidenav {
-      background-color: #f1f1f1;
-      height: 100%;
-    }
-
-    canvas {
-      display: block;
-      border: 2px solid black;
-    }
-
-    @media screen and (max-width: 767px) {
-      .row.content {
-        height: auto;
-      }
-    }
-  </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/leaflet.css">
 </head>
 <body>
 
 <nav class="navbar navbar-inverse visible-xs">
   <!-- ... (keep existing navbar code) ... -->
 </nav>
-
-<div class="container-fluid">
-  <div class="row content">
-    <div class="col-sm-3 sidenav hidden-xs">
       <h2>Logo</h2>
       <ul class="nav nav-pills nav-stacked">
-        <li class="active"><a href="#section1">Dashboard</a></li>
-        <li><a href="#section2">Age</a></li>
-        <li><a href="#section3">Gender</a></li>
-        <li><a href="#section3">Geo</a></li>
+        <li class="active"><a href="#section1">Route</a></li>
+        <li><a href="#section2">Driver</a></li>
+        <li><a href="#section3">Truck</a></li>
+        <li><a href="#section3">Comments</a></li>
       </ul>
     </div>
     <div class="col-sm-9">
       <div class="well">
-        <h4>{{ .title }}</h4>
+        <h4>Route</h4>
       </div>
-      <div class="row">
-        <div class="col-sm-11">
-          <div id="svgDiv" class="well">
-            <canvas id="svgCanvas"></canvas>
-            <script>
-              const svgCanvas = document.getElementById('svgCanvas');
-              const ctx = svgCanvas.getContext('2d');
-
-              function loadSVG(filePath) {
-                fetch(filePath)
-                  .then(response => response.text())
-                  .then(data => {
-                    const img = new Image();
-                    img.onload = () => drawImage(img);
-                    img.src = `data:image/svg+xml;base64,${btoa(data)}`;
-                  })
-                  .catch(error => console.error('Error loading SVG:', error));
-              }
-
-              function drawImage(img) {
-                ctx.clearRect(0, 0, svgCanvas.width, svgCanvas.height);
-                
-                const containerWidth = document.getElementById('svgDiv').offsetWidth;
-                const containerHeight = document.getElementById('svgDiv').offsetHeight;
-                
-                const scaleFactor = Math.min(containerWidth / img.width, containerHeight / img.height);
-                const newWidth = img.width * scaleFactor;
-                const newHeight = img.height * scaleFactor;
-                
-                const x = (containerWidth - newWidth) / 2;
-                const y = (containerHeight - newHeight) / 2;
-                
-                ctx.drawImage(img, x, y, newWidth, newHeight);
-              }
-
-              window.addEventListener('resize', () => {
-                const div = document.getElementById('svgDiv');
-                svgCanvas.width = div.clientWidth;
-                svgCanvas.height = div.clientHeight;
-                drawImage(document.querySelector('img'));
-              });
-
-              // Change this to the local file path of the SVG
-              const svgPath = 'static/user-boy.svg';
-              loadSVG(svgPath);
-            </script>
-          </div>
-        </div>
+      <div id="svgDiv" class="well">
+            <canvas id="MapDisplay"></canvas>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  // Add any JavaScript that needs to run on page load
+  const svgCanvas = document.getElementById('MapDisplay');
+  const ctx = svgCanvas.getContext('2d');
+  const aspectRatio = 1.777
+
+  function loadSVG(filePath) {
+    fetch(filePath)
+      .then(response => response.text())
+      .then(data => {
+        const img = new Image();
+        img.onload = () => drawImage(img);
+        img.src = `data:image/svg+xml;base64,${btoa(data)}`;
+      })
+      .catch(error => console.error('Error loading SVG:', error));
+  }
+
+  function drawImage(img) {
+    ctx.clearRect(0, 0, svgCanvas.width, svgCanvas.height);
+    
+    const containerWidth = document.getElementById('svgDiv').offsetWidth - 50;
+    const containerHeight = containerWidth / aspectRatio;
+    
+    const scaleFactor = Math.min(containerWidth / img.width, containerHeight / img.height);
+    const newWidth = img.width * scaleFactor;
+    const newHeight = img.height * scaleFactor;
+    
+    const x = (containerWidth - newWidth) / 2;
+    const y = (containerHeight - newHeight) / 2;
+    
+    ctx.drawImage(img, x, y, newWidth, newHeight);
+  }
+
+  window.addEventListener('resize', () => {
+    const div = document.getElementById('svgDiv').offsetWidth - 50;
+    svgCanvas.width = div;
+    svgCanvas.height = div / aspectRatio;
+    drawImage(document.querySelector(loadSVG(svgPath)));
+  });
+  
+  const svgPath = 'static/user-boy.svg';
+  loadSVG(svgPath);
 </script>
 </body>
 </html>

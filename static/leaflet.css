@@ -1,0 +1,5 @@
+#map { height: 180px; }
+canvas {
+    display: block;
+    border: 4px solid Green;
+  }
