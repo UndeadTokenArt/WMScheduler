@@ -25,6 +25,7 @@ func main() {
 	r.GET("/routes/:Name", controllers.GetRouteByName)
 	r.GET("/canvas", controllers.CanvasTest)
 	r.GET("/routetools", controllers.MapTest)
+	r.GET("/leaflet", controllers.Leaflet)
 
 	// Commented out becuase it conflicts with the wildcard for "/routes/:Name"
 	// Later I would like to make it so that we could search the DB for something other than just the name

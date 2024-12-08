@@ -203,3 +203,7 @@ func MapTest(c *gin.Context) {
 		"body":   "map.tmpl",
 	})
 }
+
+func Leaflet(c *gin.Context) {
+	c.HTML(http.StatusOK, "leaflet.tmpl", gin.H{})
+}

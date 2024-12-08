@@ -1,7 +1,135 @@
- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Leaflet Map with Multiple House Selection</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    #map {
+      height: 600px;
+    }
+    .selected {
+      background-color: yellow; /* Highlight selected markers */
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <textarea id="address-input" placeholder="Paste addresses here, one per line..."></textarea>
+  <button onclick="addMarkers()">Add Markers</button>
+  <div id="selected-addresses"></div>
 
- <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map').setView([45.5231, -122.6765], 13); // Set view to Portland, OR
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var selectedMarkers = [];
+
+    // Function to geocode address using OpenCage API
+    function geocode(address, callback) {
+      const apiKey = '2bd6dd90ee2e46b5b3609d91594156f7';
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.results.length > 0) {
+            const coords = [data.results[0].geometry.lat, data.results[0].geometry.lng];
+            callback(coords);
+          } else {
+            callback(null);
+          }
+        })
+        .catch(error => {
+          console.error('Geocoding error:', error);
+          callback(null);
+        });
+    }
+
+    // Function to reverse geocode coordinates using OpenCage API
+    function reverseGeocode(lat, lng, callback) {
+      const apiKey = '2bd6dd90ee2e46b5b3609d91594156f7';
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.results.length > 0) {
+            const address = data.results[0].formatted;
+            callback(address);
+          } else {
+            callback(null);
+          }
+        })
+        .catch(error => {
+          console.error('Reverse geocoding error:', error);
+          callback(null);
+        });
+    }
+
+    function addMarkers() {
+      const addressInput = document.getElementById('address-input').value;
+      const addresses = addressInput.split('\n');
+      addresses.forEach(address => {
+        geocode(address.trim(), coords => {
+          if (coords) {
+            var marker = L.marker(coords).addTo(map);
+            marker.address = address;
+            marker.on('click', function() {
+              if (!selectedMarkers.includes(marker)) {
+                selectedMarkers.push(marker);
+                marker.getElement().classList.add('selected');
+              } else {
+                selectedMarkers = selectedMarkers.filter(m => m !== marker);
+                marker.getElement().classList.remove('selected');
+              }
+              displaySelectedAddresses();
+            });
+          }
+        });
+      });
+    }
+
+    // Event listener to add a marker by clicking on the map
+    map.on('click', function(e) {
+      var coords = [e.latlng.lat, e.latlng.lng];
+      var marker = L.marker(coords).addTo(map);
+      reverseGeocode(e.latlng.lat, e.latlng.lng, address => {
+        marker.address = address ? address : `Lat: ${coords[0]}, Lng: ${coords[1]}`;
+        marker.on('click', function() {
+          if (!selectedMarkers.includes(marker)) {
+            selectedMarkers.push(marker);
+            marker.getElement().classList.add('selected');
+          } else {
+            selectedMarkers = selectedMarkers.filter(m => m !== marker);
+            marker.getElement().classList.remove('selected');
+          }
+          displaySelectedAddresses();
+        });
+        selectedMarkers.push(marker);
+        displaySelectedAddresses();
+      });
+    });
+
+    // Function to display selected addresses
+    function displaySelectedAddresses() {
+      const addressesDiv = document.getElementById('selected-addresses');
+      addressesDiv.innerHTML = ''; // Clear previous addresses
+
+      selectedMarkers.forEach(marker => {
+        const addressElement = document.createElement('p');
+        addressElement.textContent = marker.address; // Display actual address or coordinates
+        addressesDiv.appendChild(addressElement);
+      });
+    }
+
+  </script>
+</body>
+</html>
