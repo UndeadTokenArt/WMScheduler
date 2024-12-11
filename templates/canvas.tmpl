@@ -20,10 +20,37 @@
   <div id="map"></div>
   <textarea id="address-input" placeholder="Paste addresses here, one per line..."></textarea>
   <button onclick="addMarkers()">Add Markers</button>
+  <button onclick="addPolygon()">Show Polygon</button>
+  
+  <div>
+    <label for="tolerance-slider">Adjust Tolerance:</label>
+    <input 
+      type="range" 
+      id="tolerance-slider" 
+      min="0" 
+      max="0.05" 
+      step="0.001" 
+      value="0.005" 
+      oninput="updateToleranceLabel()" 
+    />
+    <span id="tolerance-value">0.005</span> degrees
+  </div>
+
   <div id="selected-addresses"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
+    // Prompt for API key on page load and store it
+    let apiKey = sessionStorage.getItem('apiKey');
+    if (!apiKey) {
+      apiKey = prompt('Please enter your OpenCage API key:');
+      if (apiKey) {
+        sessionStorage.setItem('apiKey', apiKey);
+      } else {
+        alert('API key is required to use the map features.');
+      }
+    }
+
     var map = L.map('map').setView([45.5231, -122.5], 12); // Set view to Portland, OR
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -34,7 +61,6 @@
 
     // Function to geocode address using OpenCage API
     function geocode(address, callback) {
-      const apiKey = '2bd6dd90ee2e46b5b3609d91594156f7';
       const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`;
 
       fetch(url)
@@ -55,7 +81,6 @@
 
     // Function to reverse geocode coordinates using OpenCage API
     function reverseGeocode(lat, lng, callback) {
-      const apiKey = '2bd6dd90ee2e46b5b3609d91594156f7';
       const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}`;
 
       fetch(url)
@@ -97,6 +122,72 @@
       });
     }
 
+    function addPolygon() {
+      let selectedCoords = [];
+      const addressInput = document.getElementById('address-input').value;
+      const addresses = addressInput.split('\n').map(addr => addr.trim()).filter(addr => addr);
+
+      // Resetting any existing polygons on the map
+      if (window.currentPolygon) {
+        map.removeLayer(window.currentPolygon);
+      }
+
+      let pendingGeocodes = addresses.length;
+
+      addresses.forEach(address => {
+        geocode(address, coords => {
+          if (coords) {
+            selectedCoords.push(coords);
+          }
+          pendingGeocodes--;
+
+          // Once all geocodes are complete, process the polygon
+          if (pendingGeocodes === 0) {
+            if (selectedCoords.length >= 3) {
+              const tolerance = parseFloat(document.getElementById('tolerance-slider').value);
+              const refinedCoords = refinePoints(selectedCoords, tolerance); // Filter points by tolerance
+              const hullCoords = computeConvexHull(refinedCoords); // Compute Convex Hull
+              window.currentPolygon = L.polygon(hullCoords, { color: 'blue' }).addTo(map);
+              map.fitBounds(window.currentPolygon.getBounds()); // Adjust map to fit the polygon
+            } else {
+              alert('At least 3 valid coordinates are required to create a polygon.');
+            }
+          }
+        });
+      });
+    }
+
+
+    // Convex Hull Algorithm (using Andrew's monotone chain algorithm)
+    function computeConvexHull(points) {
+      if (points.length < 3) return points;
+
+      points = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+      const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+
+      const lower = [];
+      for (let i = 0; i < points.length; i++) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0) {
+          lower.pop();
+        }
+        lower.push(points[i]);
+      }
+
+      const upper = [];
+      for (let i = points.length - 1; i >= 0; i--) {
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0) {
+          upper.pop();
+        }
+        upper.push(points[i]);
+      }
+
+      upper.pop();
+      lower.pop();
+      return lower.concat(upper);
+    }
+
+
     // Event listener to add a marker by clicking on the map
     map.on('click', function(e) {
       var coords = [e.latlng.lat, e.latlng.lng];
@@ -129,6 +220,30 @@
         addressesDiv.appendChild(addressElement);
       });
     }
+
+    function updateToleranceLabel() {
+      const sliderValue = document.getElementById('tolerance-slider').value;
+      document.getElementById('tolerance-value').textContent = sliderValue;
+    }
+
+    function refinePoints(points, tolerance) {
+      // Calculate the geometric center of the points
+      const center = points.reduce(
+        (acc, p) => [acc[0] + p[0], acc[1] + p[1]],
+        [0, 0]
+      ).map(sum => sum / points.length);
+
+      // Filter points based on their distance from the center
+      return points.filter(point => {
+        const distance = Math.sqrt(
+          (point[0] - center[0]) ** 2 + (point[1] - center[1]) ** 2
+        );
+        return distance >= tolerance; // Keep points farther than the tolerance
+      });
+    }
+
+
+
 
   </script>
 </body>
