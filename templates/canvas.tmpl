@@ -28,9 +28,9 @@
       type="range" 
       id="tolerance-slider" 
       min="0" 
-      max="0.05" 
-      step="0.001" 
-      value="0.005" 
+      max="0.005" 
+      step="0.0001" 
+      value="0.0005" 
       oninput="updateToleranceLabel()" 
     />
     <span id="tolerance-value">0.005</span> degrees
@@ -50,31 +50,47 @@
         alert('API key is required to use the map features.');
       }
     }
+    
+    
+    // Set view to Portland, OR
+    var map = L.map('map').setView([45.5231, -122.5], 12); 
 
-    var map = L.map('map').setView([45.5231, -122.5], 12); // Set view to Portland, OR
-
+    // defines the map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
+    // a list of the markers we have made in the session
     var selectedMarkers = [];
+    // initializes a local cache for reference of locations so we dont have to make the same call to the API
+    const geocodeCache = {};
+
 
     // Function to geocode address using OpenCage API
     function geocode(address, callback) {
-      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`;
+      if (geocodeCache[address]) {
+        // Use cached coordinates
+        console.log(`Cache hit for address: ${address}`);
+        callback(geocodeCache[address]);
+        return;
+      }
 
-      fetch(url)
+      // Fetch coordinates from OpenCage if not in cache
+      console.log(`Cache miss for address: ${address}. Fetching from OpenCage...`);
+      fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`)
         .then(response => response.json())
         .then(data => {
-          if (data.results.length > 0) {
+          if (data && data.results && data.results[0]) {
             const coords = [data.results[0].geometry.lat, data.results[0].geometry.lng];
+            geocodeCache[address] = coords; // Store in cache
             callback(coords);
           } else {
+            console.error(`Geocoding failed for address: ${address}`);
             callback(null);
           }
         })
         .catch(error => {
-          console.error('Geocoding error:', error);
+          console.error(`Error fetching geocode for ${address}:`, error);
           callback(null);
         });
     }
@@ -145,10 +161,25 @@
           if (pendingGeocodes === 0) {
             if (selectedCoords.length >= 3) {
               const tolerance = parseFloat(document.getElementById('tolerance-slider').value);
-              const refinedCoords = refinePoints(selectedCoords, tolerance); // Filter points by tolerance
-              const hullCoords = computeConvexHull(refinedCoords); // Compute Convex Hull
-              window.currentPolygon = L.polygon(hullCoords, { color: 'blue' }).addTo(map);
-              map.fitBounds(window.currentPolygon.getBounds()); // Adjust map to fit the polygon
+              console.log("Tolerance:", tolerance);
+
+              const refinedCoords = refinePoints(selectedCoords, tolerance);
+              console.log("Refined Coordinates:", refinedCoords);
+
+              if (refinedCoords.length < 3) {
+                alert('Not enough points remain after applying tolerance. Adjust tolerance or add more addresses.');
+                return;
+              }
+
+              const hullCoords = computeConvexHull(refinedCoords);
+              console.log("Convex Hull Coordinates:", hullCoords);
+
+              if (hullCoords && hullCoords.length > 2) {
+                window.currentPolygon = L.polygon(hullCoords, { color: 'blue' }).addTo(map);
+                map.fitBounds(window.currentPolygon.getBounds());
+              } else {
+                alert('Unable to create a valid polygon. Please refine your input.');
+              }
             } else {
               alert('At least 3 valid coordinates are required to create a polygon.');
             }
