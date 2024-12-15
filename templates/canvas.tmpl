@@ -14,6 +14,18 @@
       width: 100%;
       height: 100px;
     }
+    #sortable-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #sortable-list li {
+      cursor: move;
+      padding: 10px;
+      border: 4px solid #ccc;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -36,7 +48,12 @@
     <span id="tolerance-value">0.005</span> degrees
   </div>
 
-  <div id="selected-addresses"></div>
+  <div id="selected-addresses">
+    <ul id="sortable-list">
+
+    </ul>
+
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
@@ -242,15 +259,17 @@
 
     // Function to display selected addresses
     function displaySelectedAddresses() {
-      const addressesDiv = document.getElementById('selected-addresses');
-      addressesDiv.innerHTML = ''; // Clear previous addresses
+      const addressesDiv = document.getElementById('sortable-list');
+      addressesDiv.innerHTML = 'item1'; // Clear previous addresses
 
       selectedMarkers.forEach(marker => {
-        const addressElement = document.createElement('p');
+        const addressElement = document.createElement('li');
+        addressElement.setAttribute('draggable', 'true');
         addressElement.textContent = marker.address; // Display actual address or coordinates
         addressesDiv.appendChild(addressElement);
       });
     }
+
 
     function updateToleranceLabel() {
       const sliderValue = document.getElementById('tolerance-slider').value;
@@ -273,9 +292,51 @@
       });
     }
 
+    const sortable = document.getElementById('sortable-list');
+let draggedItem = null;
 
+// Drag start
+sortable.addEventListener('dragstart', (e) => {
+    draggedItem = e.target;
+    e.target.classList.add('dragging'); // Optional for styling
+});
 
+// Drag end
+sortable.addEventListener('dragend', (e) => {
+    e.target.classList.remove('dragging'); // Optional for styling
+    draggedItem = null;
+});
 
+// Drag over
+sortable.addEventListener('dragover', (e) => {
+    e.preventDefault();
+
+    // Get the element after which the dragged item should be placed
+    const afterElement = getInsertionPoint(e.clientY);
+    if (afterElement == null) {
+        // If no element is found (e.g., dragged below the last item), append to the end
+        sortable.appendChild(draggedItem);
+    } else {
+        // Otherwise, insert before the found element
+        sortable.insertBefore(draggedItem, afterElement);
+    }
+});
+
+// Function to find the closest element to the drop point
+function getInsertionPoint(clientY) {
+    // Get all sortable children except the dragged item
+    const items = [...sortable.children].filter((item) => item !== draggedItem);
+
+    return items.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = clientY - box.top - box.height / 2; // Distance from the middle of the item
+        if (offset < 0 && offset > closest.offset) {
+            return { offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
   </script>
 </body>
 </html>
