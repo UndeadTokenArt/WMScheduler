@@ -1,6 +1,8 @@
 let tabCount = 1;
-  // List of markers made in the session
+// List of markers made in the session
 var selectedMarkers = [];
+// Initialize a local cache for reference of locations to avoid multiple API calls
+const geocodeCache = {};
 
 // Prompt for API key on page load and store it
 let apiKey = sessionStorage.getItem("apiKey");
@@ -32,11 +34,6 @@ function initMap() {
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
-
-
-
-  // Initialize a local cache for reference of locations to avoid multiple API calls
-  const geocodeCache = {};
 
   // Event listener to add a marker by clicking on the map
   map.on("click", function (e) {
@@ -117,31 +114,23 @@ function addMarkers() {
 }
 
 function copySelectedMarkersToClipboard() {
-    // Create a temporary list to avoid modifying the original
-    const markersToCopy = selectedMarkers.map((marker) => ({
-      lat: marker.getLatLng().lat,
-      lng: marker.getLatLng().lng,
-      address: marker.address,
-    }));
-  
-    // Convert the list to a JSON string
-    const markersJson = JSON.stringify(markersToCopy);
-  
-    // Temporarily create a hidden input field
-    const tempInput = document.createElement("input");
-    tempInput.value = markersJson;
-    document.body.appendChild(tempInput);
-  
-    // Select and copy the input field's value
-    tempInput.select();
-    document.execCommand("copy");
-  
-    // Remove the temporary input field
-    document.body.removeChild(tempInput);
-  
-    // Optional: Provide feedback to the user
-    alert("Selected markers copied to clipboard!");
-  }
+  let addressesString = "";
+
+  selectedMarkers.forEach((marker) => {
+    addressesString += marker.address + "\n";
+  });
+
+  // Use a textarea instead of an input
+  const tempTextarea = document.createElement("textarea");
+  tempTextarea.value = addressesString;
+  document.body.appendChild(tempTextarea);
+
+  tempTextarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(tempTextarea);
+
+  alert("Selected marker addresses copied to clipboard!");
+}
 
 function addPolygonFromAddresses() {
   const addressInput = document.getElementById("address-input").value;
@@ -177,7 +166,9 @@ function addPolygonFromAddresses() {
       }
     });
   });
-} // Function to geocode address using OpenCage API
+}
+
+// Function to geocode address using OpenCage API
 function geocode(address, callback) {
   if (geocodeCache[address]) {
     // Use cached coordinates
