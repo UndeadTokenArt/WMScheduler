@@ -4,6 +4,13 @@ var selectedMarkers = [];
 // Initialize a local cache for reference of locations to avoid multiple API calls
 const geocodeCache = {};
 
+var greenIcon = L.icon({
+    iconUrl: 'static/greendot.svg',
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    popupAnchor: [1, -34]
+});
+
 // Prompt for API key on page load and store it
 let apiKey = sessionStorage.getItem("apiKey");
 if (!apiKey) {
@@ -38,7 +45,7 @@ function initMap() {
   // Event listener to add a marker by clicking on the map
   map.on("click", function (e) {
     var coords = [e.latlng.lat, e.latlng.lng];
-    var marker = L.marker(coords).addTo(map);
+    var marker = L.marker(coords, {icon: greenIcon}).addTo(map);
     reverseGeocode(e.latlng.lat, e.latlng.lng, (address) => {
       marker.address = address
         ? address
@@ -90,12 +97,7 @@ sortable.addEventListener("dragover", (e) => {
   }
 });
 
-var greenIcon = L.icon({
-    iconUrl: 'static/greendot.svg',
-    iconSize: [60, 60],
-    iconAnchor: [30, 30],
-    popupAnchor: [1, -34]
-});
+
 
 function addMarkers() {
   const addressInput = document.getElementById("address-input").value;
