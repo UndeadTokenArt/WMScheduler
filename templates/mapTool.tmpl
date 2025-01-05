@@ -1,0 +1,13 @@
+<div id="map" style="height: 500px"></div>
+<textarea
+  id="address-input"
+  placeholder="Paste addresses here, one per line..."
+></textarea>
+<button onclick="addMarkers()">Add Markers</button>
+<button onclick="copySelectedMarkersToClipboard()">Copy Markers</button>
+<!-- <button onclick="addPolygonFromAddresses()">Highlight Addresses</button> -->
+<div id="selected-addresses">
+  <ul id="sortable-list"></ul>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script src="static/map.js"></script>

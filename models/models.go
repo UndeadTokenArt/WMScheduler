@@ -10,14 +10,23 @@ type Route struct {
 	Disposal  string `json:"disposal"`
 	Cover     string `json:"cover"`
 	Comments  string `json:"comments"`
-	
 }
 
 type Driver struct {
 	gorm.Model
 	Name string `json:"name"`
 }
- type DBSchema struct {
+type DBSchema struct {
 	routes []Route
 	driver []Driver
- }
+}
+
+// Address struct to store geolocation information
+type Address struct {
+	Street    string  `json:"street"`
+	City      string  `json:"city"`
+	State     string  `json:"state"`
+	ZipCode   string  `json:"zipcode"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}

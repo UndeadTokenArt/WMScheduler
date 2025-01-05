@@ -1,0 +1,20 @@
+<div class="container">
+  <aside class="sidebar">
+    <h2>Sidebar</h2>
+    <ul>
+      <li><a href="#home">Home</a></li>
+      <li><a href="#profile">Profile</a></li>
+      <li><a href="#settings">Settings</a></li>
+    </ul>
+  </aside>
+  <main class="main-content">
+    <nav class="tab-nav">
+      <button class="tab-link" onclick="openTab(event, 'Tab1')">Map</button>
+      <button class="add-tab-btn" onclick="addTab()">+</button>
+    </nav>
+    <div id="Tab1" class="tab-content">
+      <h3>Map</h3>
+      {{ template "mapTool.tmpl" . }}
+    </div>
+  </main>
+</div>
