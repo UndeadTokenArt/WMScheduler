@@ -90,13 +90,20 @@ sortable.addEventListener("dragover", (e) => {
   }
 });
 
+var greenIcon = L.icon({
+    iconUrl: 'static/greendot.svg',
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    popupAnchor: [1, -34]
+});
+
 function addMarkers() {
   const addressInput = document.getElementById("address-input").value;
   const addresses = addressInput.split("\n");
   addresses.forEach((address) => {
     geocode(address.trim(), (coords) => {
       if (coords) {
-        var marker = L.marker(coords).addTo(map);
+        var marker = L.marker(coords, {icon: greenIcon}).addTo(map);
         marker.address = address;
         marker.on("click", function () {
           if (!selectedMarkers.includes(marker)) {
