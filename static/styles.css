@@ -89,11 +89,22 @@ textarea {
   width: 100%;
   height: 100px;
 }
-#sortable-list {
+#selected-addresses {
+  display: flex
+}
+
+#sortable-list, #tempList {
+  flex: 1;
+  border:1px solid #ccc;
   list-style-type: none;
   padding: 0;
   margin: 0;
 }
+
+#leftList, #rightList {
+  flex: 1;
+}
+
 #sortable-list li {
   cursor: move;
   padding: 10px;

@@ -1,7 +1,5 @@
 let tabCount = 1;
-// List of markers made in the session
 var selectedMarkers = [];
-// Initialize a local cache for reference of locations to avoid multiple API calls
 const geocodeCache = {};
 
 var greenIcon = L.icon({
@@ -14,38 +12,35 @@ var greenIcon = L.icon({
 // Prompt for API key on page load and store it
 let apiKey = sessionStorage.getItem("apiKey");
 if (!apiKey) {
-  apiKey = prompt("Please enter your OpenCage API key:");
-  if (apiKey) {
-    sessionStorage.setItem("apiKey", apiKey);
-  } else {
-    alert("API key is required to use the map features.");
-  }
+    apiKey = prompt("Please enter your OpenCage API key:");
+    if (apiKey && apiKey.match(/^[a-zA-Z0-9]{32}$/)) {
+        sessionStorage.setItem("apiKey", apiKey);
+    } else {
+        alert("Invalid or missing API key. Geolocation features will not work.");
+    }
 }
 
-// Event listener to initialize the map when the tab is clicked
+// Initialize the map when the tab is clicked
 document.querySelector(".tab-link").addEventListener("click", () => {
-  if (!map) {
-    initMap();
-  }
+    if (!map) {
+        initMap();
+    }
 });
 
-// Function to initialize the map
+// Map initialization
 let map;
 
 function initMap() {
-  // Set view to Portland, OR
-  map = L.map("map").setView([45.5231, -122.5], 12);
+    map = L.map("map").setView([45.5231, -122.5], 12);
 
-  // Define the map
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
 
   // Event listener to add a marker by clicking on the map
   map.on("click", function (e) {
     var coords = [e.latlng.lat, e.latlng.lng];
-    var marker = L.marker(coords, {icon: greenIcon}).addTo(map);
+    var marker = L.marker(coords).addTo(map);
     reverseGeocode(e.latlng.lat, e.latlng.lng, (address) => {
       marker.address = address
         ? address
@@ -66,20 +61,25 @@ function initMap() {
   });
 }
 
-// Drag-and-drop functionality for sortable list
-const sortable = document.getElementById("sortable-list");
+// Drag-and-drop functionality for the sortable list
 let draggedItem = null;
 
-// Drag start
-sortable.addEventListener("dragstart", (e) => {
-  draggedItem = e.target;
-  e.target.classList.add("dragging"); // Optional for styling
+document.getElementById("sortable-list").addEventListener("dragstart", (e) => {
+    draggedItem = e.target;
+    e.dataTransfer.setData("text/plain", "");
 });
 
-// Drag end
-sortable.addEventListener("dragend", (e) => {
-  e.target.classList.remove("dragging"); // Optional for styling
-  draggedItem = null;
+document.getElementById("sortable-list").addEventListener("dragover", (e) => {
+    e.preventDefault();
+});
+
+document.getElementById("sortable-list").addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (draggedItem) {
+        e.target.appendChild(draggedItem);
+        updateSelectedMarkersFromList();
+    }
+    draggedItem = null;
 });
 
 // Drag over
@@ -97,249 +97,108 @@ sortable.addEventListener("dragover", (e) => {
   }
 });
 
-
+var greenIcon = L.icon({
+    iconUrl: 'static/greendot.svg',
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    popupAnchor: [1, -34]
+});
 
 function addMarkers() {
-  const addressInput = document.getElementById("address-input").value;
-  const addresses = addressInput.split("\n");
-  addresses.forEach((address) => {
-    geocode(address.trim(), (coords) => {
-      if (coords) {
-        var marker = L.marker(coords, {icon: greenIcon}).addTo(map);
-        marker.address = address;
-        marker.on("click", function () {
-          if (!selectedMarkers.includes(marker)) {
-            selectedMarkers.push(marker);
-            marker.getElement().classList.add("selected");
-          } else {
-            selectedMarkers = selectedMarkers.filter((m) => m !== marker);
-            marker.getElement().classList.remove("selected");
-          }
-          displaySelectedAddresses();
+    const addressInput = document.getElementById("address-input").value;
+    const addresses = addressInput.split("\n").map((addr) => addr.trim()).filter((addr) => addr);
+
+    addresses.forEach((address) => {
+        if (selectedMarkers.some((marker) => marker.address === address)) return;
+
+        geocode(address, (coords) => {
+            if (coords) {
+                const marker = L.marker(coords, { icon: greenIcon }).addTo(map);
+                marker.address = address;
+                marker.on("click", () => toggleMarkerSelection(marker));
+                selectedMarkers.push(marker);
+
+                const addressElement = document.createElement("li");
+                addressElement.setAttribute("draggable", "true");
+                addressElement.textContent = address;
+                document.getElementById("sortable-list").appendChild(addressElement);
+            }
         });
-      }
-    });
-  });
-}
-
-function copySelectedMarkersToClipboard() {
-  let addressesString = "";
-
-  selectedMarkers.forEach((marker) => {
-    addressesString += marker.address + "\n";
-  });
-
-  // Use a textarea instead of an input
-  const tempTextarea = document.createElement("textarea");
-  tempTextarea.value = addressesString;
-  document.body.appendChild(tempTextarea);
-
-  tempTextarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(tempTextarea);
-
-  alert("Selected marker addresses copied to clipboard!");
-}
-
-function addPolygonFromAddresses() {
-  const addressInput = document.getElementById("address-input").value;
-  const addresses = addressInput
-    .split("\n")
-    .map((addr) => addr.trim())
-    .filter((addr) => addr);
-
-  if (addresses.length === 0) {
-    alert("No valid addresses found in the input.");
-    return;
-  }
-
-  const tolerance =
-    parseFloat(document.getElementById("tolerance-slider").value) || 0.01;
-  const points = [];
-
-  let processedCount = 0;
-
-  addresses.forEach((address) => {
-    geocode(address, (coords) => {
-      processedCount++;
-      if (coords) {
-        points.push({ lat: coords[0], lng: coords[1] });
-      }
-
-      if (processedCount === addresses.length) {
-        if (points.length < 3) {
-          alert("Not enough valid points to create a polygon.");
-        } else {
-          addPolygon(map, points, tolerance);
-        }
-      }
-    });
-  });
-}
-
-// Function to geocode address using OpenCage API
-function geocode(address, callback) {
-  if (geocodeCache[address]) {
-    // Use cached coordinates
-    console.log(`Cache hit for address: ${address}`);
-    callback(geocodeCache[address]);
-    return;
-  }
-
-  // Fetch coordinates from OpenCage if not in cache
-  console.log(`Cache miss for address: ${address}. Fetching from OpenCage...`);
-  fetch(
-    `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-      address
-    )}&key=${apiKey}`
-  )
-    .then((response) => response.json())
-    .then((data) => {
-      if (data && data.results && data.results[0]) {
-        const coords = [
-          data.results[0].geometry.lat,
-          data.results[0].geometry.lng,
-        ];
-        geocodeCache[address] = coords; // Store in cache
-        callback(coords);
-      } else {
-        console.error(`Geocoding failed for address: ${address}`);
-        callback(null);
-      }
-    })
-    .catch((error) => {
-      console.error(`Error fetching geocode for ${address}:`, error);
-      callback(null);
     });
 }
 
-function addPolygon(map, points, tolerance = 0.01) {
-  // Remove duplicate points within the tolerance range
-  const dedupedPoints = [];
-  points.forEach((point) => {
-    if (
-      !dedupedPoints.some(
-        (p) =>
-          Math.abs(p.lat - point.lat) <= tolerance &&
-          Math.abs(p.lng - point.lng) <= tolerance
-      )
-    ) {
-      dedupedPoints.push(point);
-    }
-  });
-
-  // Compute the centroid
-  const centroid = computeCentroid(dedupedPoints);
-
-  // Sort points by angle around the centroid
-  const sortedPoints = dedupedPoints
-    .map((point) => ({ ...point, angle: calculateAngle(centroid, point) }))
-    .sort((a, b) => a.angle - b.angle);
-
-  // Construct the polygon using sorted points
-  const polygon = L.polygon(
-    sortedPoints.map((p) => [p.lat, p.lng]),
-    {
-      color: "blue",
-    }
-  );
-
-  // Add to the map
-  polygon.addTo(map);
-}
-function computeCentroid(points) {
-  let latSum = 0,
-    lngSum = 0;
-  points.forEach((point) => {
-    latSum += point.lat;
-    lngSum += point.lng;
-  });
-  return { lat: latSum / points.length, lng: lngSum / points.length };
-}
-function calculateAngle(center, point) {
-  return Math.atan2(point.lat - center.lat, point.lng - center.lng);
-}
-// Function to display selected addresses
+// Display selected addresses in the sortable list
 function displaySelectedAddresses() {
-  const addressesDiv = document.getElementById("sortable-list");
-  addressesDiv.innerHTML = "Address List"; // Clear previous addresses
+    const sortableList = document.getElementById("sortable-list");
+    sortableList.innerHTML = ""; // Clear the list
 
-  selectedMarkers.forEach((marker) => {
-    const addressElement = document.createElement("li");
-    addressElement.setAttribute("draggable", "true");
-    addressElement.textContent = marker.address; // Display actual address or coordinates
-    addressesDiv.appendChild(addressElement);
-  });
-}
-function updateToleranceLabel(map, points) {
-  const slider = document.getElementById("tolerance-slider");
-  const toleranceValue = document.getElementById("tolerance-value");
-
-  // Update the tolerance label and re-draw the polygon
-  slider.addEventListener("input", (e) => {
-    const tolerance = parseFloat(e.target.value);
-    toleranceValue.textContent = tolerance.toFixed(3);
-
-    // Clear existing polygons from the map
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Polygon) {
-        map.removeLayer(layer);
-      }
+    selectedMarkers.forEach((marker) => {
+        const addressElement = document.createElement("li");
+        addressElement.setAttribute("draggable", "true");
+        addressElement.textContent = marker.address;
+        sortableList.appendChild(addressElement);
     });
-
-    // Re-draw the polygon with the updated tolerance
-    addPolygon(map, points, tolerance);
-  });
-}
-function refinePoints(points, tolerance) {
-  // Calculate the geometric center of the points
-  const center = points
-    .reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0])
-    .map((sum) => sum / points.length);
-
-  // Filter points based on their distance from the center
-  return points.filter((point) => {
-    const distance = Math.sqrt(
-      (point[0] - center[0]) ** 2 + (point[1] - center[1]) ** 2
-    );
-    return distance >= tolerance; // Keep points farther than the tolerance
-  });
-}
-// Function to find the closest element to the drop point
-function getInsertionPoint(clientY) {
-  // Get all sortable children except the dragged item
-  const items = [...sortable.children].filter((item) => item !== draggedItem);
-
-  return items.reduce(
-    (closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = clientY - box.top - box.height / 2; // Distance from the middle of the item
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
-      } else {
-        return closest;
-      }
-    },
-    { offset: Number.NEGATIVE_INFINITY }
-  ).element;
 }
 
-// Function to reverse geocode coordinates using OpenCage API
+// Copy selected marker addresses to clipboard
+function copySelectedMarkersToClipboard() {
+    const addressesString = selectedMarkers.map((marker) => marker.address).join("\n");
+
+    const tempTextarea = document.createElement("textarea");
+    tempTextarea.value = addressesString;
+    document.body.appendChild(tempTextarea);
+    tempTextarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempTextarea);
+
+    alert("Selected marker addresses copied to clipboard!");
+}
+
+// Reverse geocode coordinates
 function reverseGeocode(lat, lng, callback) {
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}`;
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}`;
 
-  fetch(url)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.results.length > 0) {
-        const address = data.results[0].formatted;
-        callback(address);
-      } else {
-        callback(null);
-      }
-    })
-    .catch((error) => {
-      console.error("Reverse geocoding error:", error);
-      callback(null);
-    });
+    fetch(url)
+        .then((response) => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json();
+        })
+        .then((data) => {
+            if (data.results.length > 0) {
+                callback(data.results[0].formatted);
+            } else {
+                callback(null);
+            }
+        })
+        .catch((error) => {
+            console.error("Reverse geocoding error:", error);
+            callback(null);
+        });
+}
+
+// Geocode address
+function geocode(address, callback) {
+    if (geocodeCache[address]) {
+        callback(geocodeCache[address]);
+        return;
+    }
+
+    fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(address)}&key=${apiKey}`)
+        .then((response) => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json();
+        })
+        .then((data) => {
+            if (data.results && data.results[0]) {
+                const coords = [data.results[0].geometry.lat, data.results[0].geometry.lng];
+                geocodeCache[address] = coords;
+                callback(coords);
+            } else {
+                callback(null);
+            }
+        })
+        .catch((error) => {
+            console.error("Geocoding error:", error);
+            callback(null);
+        });
 }

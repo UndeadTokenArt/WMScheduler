@@ -2,6 +2,11 @@ package models
 
 import "gorm.io/gorm"
 
+type DBSchema struct {
+	routes  []Route
+	driver  []Driver
+	Address []Address
+}
 type Route struct {
 	gorm.Model
 	RouteName string `json:"routename"`
@@ -15,10 +20,6 @@ type Route struct {
 type Driver struct {
 	gorm.Model
 	Name string `json:"name"`
-}
-type DBSchema struct {
-	routes []Route
-	driver []Driver
 }
 
 // Address struct to store geolocation information
